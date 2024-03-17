@@ -1,10 +1,10 @@
 import random
 from math import pi, sin, cos, atan2, radians, degrees
-from random import randint
+import random
 import pygame as pg
 import numpy as np
-from PyNAnts.entities.vec2 import Vec2
-from PyNAnts.config import Config
+from Ants_simulator.entities.vec2 import Vec2
+from Ants_simulator.config import Config
 
 
 class Ant(pg.sprite.Sprite):
@@ -18,6 +18,7 @@ class Ant(pg.sprite.Sprite):
         self.nest = Config.L_NEST
         self.image = pg.Surface((12, 21)).convert()
         self.image.set_colorkey(0)
+        self.collected_food = 0
         cBrown = (100, 42, 42)
         # Draw Ant
         pg.draw.aaline(self.image, cBrown, [0, 5], [11, 15])
@@ -31,36 +32,35 @@ class Ant(pg.sprite.Sprite):
         # save drawing for later
         self.orig_img = pg.transform.rotate(self.image.copy(), -90)
         self.rect = self.image.get_rect(center=self.nest)
-        self.ang = randint(0, 360)
+        self.ang = random.randint(0, 360)
         self.desireDir = pg.Vector2(cos(radians(self.ang)), sin(radians(self.ang)))
         self.pos = pg.Vector2(self.rect.center)
         self.vel = pg.Vector2(0, 0)
-        self.last_sdp = (self.nest[0]/10/2, self.nest[1]/10/2)
         self.mode = 0
+        self.T = 0
 
     def update(self):
         pass
 
-    def _avoid_edges(self, max_speed, wandr_str, steer_str):
+    def _avoid_edges(self, wandr_str, steer_str):
         # Get locations to check as sensor points, in pairs for better detection.
-        mid_sens = Vec2.vint(self.pos + pg.Vector2(21, 0).rotate(self.ang))
-        left_sens = Vec2.vint(self.pos + pg.Vector2(18, -8).rotate(self.ang))
-        right_sens = Vec2.vint(self.pos + pg.Vector2(18, 8).rotate(self.ang))
+        mid_sens = Vec2.vint(self.pos + pg.Vector2(42, 0).rotate(self.ang))
+        left_sens = Vec2.vint(self.pos + pg.Vector2(36, -16).rotate(self.ang))
+        right_sens = Vec2.vint(self.pos + pg.Vector2(36, 16).rotate(self.ang))
         # Avoid edges
         if not self.drawSurf.get_rect().collidepoint(left_sens) and self.drawSurf.get_rect().collidepoint(right_sens):
-            self.desireDir += pg.Vector2(0, 1).rotate(self.ang)  # .normalize()
+            self.desireDir += pg.Vector2(0, 1).rotate(self.ang)
             wandr_str = .01
             steer_str = 5
         elif not self.drawSurf.get_rect().collidepoint(right_sens) and self.drawSurf.get_rect().collidepoint(left_sens):
-            self.desireDir += pg.Vector2(0, -1).rotate(self.ang)  # .normalize()
+            self.desireDir += pg.Vector2(0, -1).rotate(self.ang)
             wandr_str = .01
             steer_str = 5
         elif not self.drawSurf.get_rect().collidepoint(mid_sens):
-            self.desireDir += pg.Vector2(-1, 0).rotate(self.ang)  # .normalize()
-            max_speed = 5
+            self.desireDir += pg.Vector2(-1, 0).rotate(self.ang)
             wandr_str = .01
             steer_str = 5
-        return max_speed, wandr_str, steer_str
+        return wandr_str, steer_str
 
     @staticmethod
     def _get_sensing_vectors():
@@ -69,15 +69,15 @@ class Ant(pg.sprite.Sprite):
         vectors = [(l * np.cos(t), l * np.sin(t)) for l, t in zip(lengths, angles)]
         return vectors
 
-    def _set_direction(self, dt, max_speed, wandr_str, steer_str):
-        randAng = randint(0, 360)
-        randDir = pg.Vector2(cos(radians(randAng)),sin(radians(randAng)))
+    def _set_direction(self, dt, wandr_str, steer_str):
+        randAng = random.uniform(-Config.MU, Config.MU)
+        randDir = pg.Vector2(cos(randAng), sin(randAng)).rotate(self.ang)
         self.desireDir = pg.Vector2(self.desireDir + randDir * wandr_str).normalize()
-        dzVel = self.desireDir * max_speed
+        dzVel = self.desireDir * Config.MAX_SPEED
         dzStrFrc = (dzVel - self.vel) * steer_str
         accel = dzStrFrc if pg.Vector2(dzStrFrc).magnitude() <= steer_str else pg.Vector2(dzStrFrc.normalize() * steer_str)
         velo = self.vel + accel * dt
-        self.vel = velo if pg.Vector2(velo).magnitude() <= max_speed else pg.Vector2(velo.normalize() * max_speed)
+        self.vel = velo if pg.Vector2(velo).magnitude() <= Config.MAX_SPEED else pg.Vector2(velo.normalize() * Config.MAX_SPEED)
         self.pos += self.vel * dt
         self.ang = degrees(atan2(self.vel[1], self.vel[0]))
         # adjusts angle of img to match heading
@@ -116,89 +116,121 @@ class Ant(pg.sprite.Sprite):
 
 class WorkerAnt(Ant):
     def update(self, dt):  # behavior
-        rand_str = 0.12  # how random they walk around
-        steer_str = 3  # 3 or 4, dono
-        max_speed = 12
+        rand_str = 1  # how random they walk around
+        steer_str = 3
+        # Increase the simulation step since the last nest/food visit
+        self.T += 1
         # Converts ant's current screen coordinates, to smaller resolution of pherogrid.
         scaledown_pos = (int(self.pos.x/Config.PRATIO), int(self.pos.y/Config.PRATIO))
-
+        # Generate the sensing vectors
         sensing_vectors = self._get_sensing_vectors()
-
+        # Sensing the environment
         phero_intensity_list, isID_list, GA_result_list = self._sens_vectors(sensing_vectors)
 
+        # Don't search for food if you are not far enough from the nest
         if self.mode == 0 and self.pos.distance_to(self.nest) > 21:
             self.mode = 1
-
-        elif self.mode == 1:  # Look for food, or trail to food.
+        # Look for food, or trail to food.
+        elif self.mode == 1:
+            # If the position is inside the surface
             if self.drawSurf.get_rect().collidepoint(self.pos):
-                self.phero.intensity[scaledown_pos][0] += 250
+                # If visited the nest, reset the simulation step
+                if self.pos.distance_to(self.nest) < 24:
+                    self.T = 0
+                # If the existing home pheromone is less than yours, deposit home pheromone
+                if self.phero.intensity[scaledown_pos][0] < Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA*self.T):
+                    self.phero.intensity[scaledown_pos][0] = Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA * self.T)
                 self.isMyTrail[scaledown_pos] = True
-                self.last_sdp = scaledown_pos
-
+            # Finding the most intense food pheromone among sensed cells
             food_phero_intensity_list = phero_intensity_list[:, 1]
             max_food_phero_intensity_arg = np.argmax(food_phero_intensity_list)
+            # Find the corresponding sensing vector
             if food_phero_intensity_list[max_food_phero_intensity_arg] != 0:
                 best_vector = sensing_vectors[max_food_phero_intensity_arg]
+                # Set direction
                 self.desireDir = pg.Vector2(best_vector).normalize().rotate(self.ang)
-                rand_str = .1
 
+            # If food is found
             for GA in GA_result_list:
                 if GA.tolist() == Config.FOOD_COLOR:
                     self.desireDir = pg.Vector2(-1, 0).rotate(self.ang).normalize()
-                    max_speed = 5
                     rand_str = .01
                     steer_str = 5
                     self.mode = 2
+                    self.T = 0
 
-        elif self.mode == 2:    # Once found food, either follow own trail back to nest, or head in nest's general direction.
-            if scaledown_pos[0] in range(0, self.pgSize[0]) and scaledown_pos[1] in range(0, self.pgSize[1]):
-                self.phero.intensity[scaledown_pos][1] += 250
-                self.last_sdp = scaledown_pos
+        # Once found food, either follow own trail back to nest, or head in nest's general direction.
+        elif self.mode == 2:
+            # If the position is inside the surface
+            if self.drawSurf.get_rect().collidepoint(self.pos):
+                # If the existing home pheromone is less than yours, deposit home pheromone
+                if self.phero.intensity[scaledown_pos][1] < Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA * self.T):
+                    self.phero.intensity[scaledown_pos][1] = Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA * self.T)
+
+            # Finding the most intense home pheromone among sensed cells
+            home_phero_intensity_list = phero_intensity_list[:, 0]
+            max_home_phero_intensity_arg = np.argmax(home_phero_intensity_list)
+            # Find the corresponding sensing vector
+            if home_phero_intensity_list[max_home_phero_intensity_arg] != 0:
+                best_vector = sensing_vectors[max_home_phero_intensity_arg]
+                # Set direction
+                self.desireDir = pg.Vector2(best_vector).normalize().rotate(self.ang)
+                rand_str = .1
 
             if self.pos.distance_to(self.nest) < 24:
                 self.desireDir = pg.Vector2(-1, 0).rotate(self.ang).normalize()
                 self.isMyTrail[:] = False
-                max_speed = 5
+                self.collected_food += 1
                 rand_str = .01
                 steer_str = 5
                 self.mode = 0
-            else:
-                self.desireDir += pg.Vector2(self.nest - self.pos).normalize() * .08
-                rand_str = .1
+                self.T = 0
+
         # Avoid edges
-        max_speed, rand_str, steer_str = self._avoid_edges(max_speed, rand_str, steer_str)
-        self._set_direction(dt, max_speed, rand_str, steer_str)
+        rand_str, steer_str = self._avoid_edges(rand_str, steer_str)
+        steer_str *= 10
+        self._set_direction(dt, rand_str, steer_str)
 
 
 class MaliciousAnt(Ant):
     def update(self, dt):  # behavior
         wandr_str = .12  # how random they walk around
-        max_speed = 12  # 10-12 seems ok
         steer_str = 3  # 3 or 4, dono
+        # Increase the simulation step since the last nest/food visit
+        self.T += 1
         # Converts ant's current screen coordinates, to smaller resolution of pherogrid.
         scaledown_pos = (int(self.pos.x / Config.PRATIO), int(self.pos.y / Config.PRATIO))
-
+        # Generate the sensing vectors
         sensing_vectors = self._get_sensing_vectors()
-
+        # Sensing the environment
         phero_intensity_list, isID_list, GA_result_list = self._sens_vectors(sensing_vectors)
 
+        # Don't search for food if you are not far enough from the nest
         if self.mode == 0 and self.pos.distance_to(self.nest) > 21:
             self.mode = 1
-
-        elif self.mode == 1:  # Look for food, or trail to food.
-            if scaledown_pos != self.last_sdp and self.drawSurf.get_rect().collidepoint(self.pos):
-                self.phero.intensity[scaledown_pos][1] += 250
-                self.phero.intensity[scaledown_pos][2] += 250
+        # Look for food, or trail to food.
+        elif self.mode == 1:
+            # If the position is inside the surface
+            if self.drawSurf.get_rect().collidepoint(self.pos):
+                # If visited the nest, reset the simulation step
+                if self.pos.distance_to(self.nest) < 24:
+                    self.T = 0
+                # If the existing food pheromone is less than yours, deposit home pheromone
+                if self.phero.intensity[scaledown_pos][1] < Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA * self.T):
+                    self.phero.intensity[scaledown_pos][1] = Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA * self.T)
+                    self.phero.intensity[scaledown_pos][2] = Config.MAX_PHEROMONE_INTENSITY * np.exp(-Config.LAMBDA * self.T)
                 self.isMyTrail[scaledown_pos] = True
-                self.last_sdp = scaledown_pos
-
-            food_phero_intensity_list = phero_intensity_list[:, 1]
-            max_food_phero_intensity_arg = np.argmax(food_phero_intensity_list)
-            if food_phero_intensity_list[max_food_phero_intensity_arg] != 0:
-                best_vector = sensing_vectors[max_food_phero_intensity_arg]
-                self.desireDir += pg.Vector2(best_vector).rotate(self.ang).normalize()
-                wandr_str = .1
+            # Finding the most intense home pheromone among sensed cells
+            home_phero_intensity_list = phero_intensity_list[:, 0]
+            max_home_phero_intensity_arg = np.argmax(home_phero_intensity_list)
+            # Find the corresponding sensing vector
+            if home_phero_intensity_list[max_home_phero_intensity_arg] != 0:
+                best_vector = sensing_vectors[max_home_phero_intensity_arg]
+                # Set direction
+                self.desireDir = pg.Vector2(best_vector).normalize().rotate(self.ang)
+                rand_str = .1
 
         # Avoid edges
-        max_speed, wandr_str, steer_str = self._avoid_edges(max_speed, wandr_str, steer_str)
-        self._set_direction(dt, max_speed, wandr_str, steer_str)
+        wandr_str, steer_str = self._avoid_edges(wandr_str, steer_str)
+        steer_str *= 10
+        self._set_direction(dt, wandr_str, steer_str)

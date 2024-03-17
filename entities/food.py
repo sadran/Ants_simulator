@@ -1,4 +1,4 @@
-from PyNAnts.config import Config
+from Ants_simulator.config import Config
 import pygame as pg
 
 

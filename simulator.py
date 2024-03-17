@@ -1,6 +1,6 @@
 from math import pi, sin, cos
 import pygame as pg
-from PyNAnts.config import Config
+from Ants_simulator.config import Config
 from entities.pheromoneGrid import PheromoneGrid
 from entities.ant import WorkerAnt, MaliciousAnt
 from entities.food import Food
@@ -28,36 +28,30 @@ def main():
             colony.add(MaliciousAnt(screen, world))
         else:
             colony.add(WorkerAnt(screen, world))
-
-    foodList = []
-    foods = pg.sprite.Group()
     font = pg.font.Font(None, 30)
     clock = pg.time.Clock()
+    foods = pg.sprite.Group()
+
+
+    """foodBits = 200
+    cx, cy = Config.L_FOOD
+    fRadius = Config.R_FOOD
+    for i in range(0, foodBits):  # spawn food bits evenly within a circle
+        dist = pow(i / (foodBits - 1.0), 0.5) * fRadius
+        angle = 2 * pi * 0.618033 * i
+        fx = cx + dist * cos(angle)
+        fy = cy + dist * sin(angle)
+        foods.add(Food((fx, fy)))"""
+
     # main loop
-    while True:
+    sim_step = Config.N
+    while sim_step:
+        sim_step -= 1
         for e in pg.event.get():
             if e.type == pg.QUIT or e.type == pg.KEYDOWN and e.key == pg.K_ESCAPE:
                 return
-            elif e.type == pg.MOUSEBUTTONDOWN:
-                mousepos = pg.mouse.get_pos()
-                if e.button == 1:
-                    foodBits = 200
-                    fRadius = 50
-                    for i in range(0, foodBits):    # spawn food bits evenly within a circle
-                        dist = pow(i / (foodBits - 1.0), 0.5) * fRadius
-                        angle = 2 * pi * 0.618033 * i
-                        fx = mousepos[0] + dist * cos(angle)
-                        fy = mousepos[1] + dist * sin(angle)
-                        foods.add(Food((fx, fy)))
-                    foodList.extend(foods.sprites())
-                if e.button == 3:
-                    for fbit in foodList:
-                        if pg.Vector2(mousepos).distance_to(fbit.rect.center) < fRadius+5:
-                            fbit.pickup()
-                    foodList = foods.sprites()
 
-        dt = clock.tick(Config.FPS) / 100
-
+        dt = clock.tick(Config.FPS)/1000
         pheroImg = world.update(dt)
         colony.update(dt)
         screen.fill(0)  # fill MUST be after sensors update, so previous draw is visible to them
@@ -69,15 +63,16 @@ def main():
         foods.draw(screen)
 
         pg.draw.circle(screen, Config.HOME_COLOR, Config.L_NEST, Config.R_NEST/Config.PRATIO)
+        pg.draw.circle(screen, Config.FOOD_COLOR, Config.L_FOOD, Config.R_FOOD / Config.PRATIO)
 
         colony.draw(screen)
-
-        if Config.SHOWFPS:
-            screen.blit(font.render(str(int(clock.get_fps())), True, [0, 200, 0]), (8, 8))
-
+        total_collected_food = sum(ant.collected_food for ant in colony)
+        screen.blit(font.render(f"total collected food:{total_collected_food}", True, [0, 200, 0]), (8, 8))
+        screen.blit(font.render(f"simulation step: {sim_step}", True, [0, 200, 0]), (8, 30))
+        screen.blit(font.render(f"FPS: {int(clock.get_fps())}", True, [0, 200, 0]), (8, 60))
         pg.display.update()
 
 
 if __name__ == '__main__':
-    main()  # by Nik
+    main()
     pg.quit()
