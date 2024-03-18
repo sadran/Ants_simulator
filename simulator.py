@@ -23,15 +23,16 @@ def main():
     colony = pg.sprite.Group()
     world = PheromoneGrid(screen_size)
 
+    malicious_ants_num = 0
+    worker_ants_num = 0
     for n in range(Config.ANTS):
         if n < Config.ANTS * Config.MAL_ANT_FRC:
             colony.add(MaliciousAnt(screen, world))
+            malicious_ants_num += 1
         else:
             colony.add(WorkerAnt(screen, world))
-    font = pg.font.Font(None, 30)
+            worker_ants_num += 1
     clock = pg.time.Clock()
-    foods = pg.sprite.Group()
-
 
     """foodBits = 200
     cx, cy = Config.L_FOOD
@@ -44,9 +45,9 @@ def main():
         foods.add(Food((fx, fy)))"""
 
     # main loop
-    sim_step = Config.N
-    while sim_step:
-        sim_step -= 1
+    sim_step = 0
+    while sim_step < Config.N:
+        sim_step += 1
         for e in pg.event.get():
             if e.type == pg.QUIT or e.type == pg.KEYDOWN and e.key == pg.K_ESCAPE:
                 return
@@ -54,22 +55,32 @@ def main():
         dt = clock.tick(Config.FPS)/1000
         pheroImg = world.update(dt)
         colony.update(dt)
-        screen.fill(0)  # fill MUST be after sensors update, so previous draw is visible to them
+        total_collected_food = sum(ant.collected_food for ant in colony.sprites() if isinstance(ant, WorkerAnt))
+        total_delivered_food = sum(ant.delivared_food for ant in colony.sprites() if isinstance(ant, WorkerAnt))
+        ants_collected_ever = 0
+        ants_delivered_ever = 0
+        for ant in colony.sprites():
+            if isinstance(ant, WorkerAnt) and ant.delivared_food != 0:
+                ants_delivered_ever += 1
+            if isinstance(ant, WorkerAnt) and ant.collected_food != 0:
+                ants_collected_ever += 1
 
+        ants_collected_ever_ratio = ants_collected_ever / worker_ants_num
+        ants_delivered_ever_ratio = ants_delivered_ever / worker_ants_num
+
+        screen.fill(0)  # fill MUST be after sensors update, so previous draw is visible to them
         rescaled_img = pg.transform.scale(pheroImg, screen_size)
         pg.Surface.blit(screen, rescaled_img, (0, 0))
-
-        #colony.update(dt)  # enable here to see debug dots
-        foods.draw(screen)
-
-        pg.draw.circle(screen, Config.HOME_COLOR, Config.L_NEST, Config.R_NEST/Config.PRATIO)
+        pg.draw.circle(screen, Config.HOME_COLOR, Config.L_NEST, Config.R_NEST / Config.PRATIO)
         pg.draw.circle(screen, Config.FOOD_COLOR, Config.L_FOOD, Config.R_FOOD / Config.PRATIO)
+        font = pg.font.Font(None, 30)
+        screen.blit(font.render(f"simulation step: {sim_step}", True, [0, 200, 0]), (8, 8))
+        screen.blit(font.render(f"total collected foods:{total_collected_food}", True, [0, 200, 0]), (8, 30))
+        screen.blit(font.render(f"total delivered foods:{total_delivered_food}", True, [0, 200, 0]), (8, 60))
+        screen.blit(font.render(f"ants ever collected ratio:{ants_collected_ever_ratio:.2f}", True, [0, 200, 0]), (8, 90))
+        screen.blit(font.render(f"ants ever delivered ratio:{ants_delivered_ever_ratio:.2f}", True, [0, 200, 0]), (8, 120))
 
-        colony.draw(screen)
-        total_collected_food = sum(ant.collected_food for ant in colony)
-        screen.blit(font.render(f"total collected food:{total_collected_food}", True, [0, 200, 0]), (8, 8))
-        screen.blit(font.render(f"simulation step: {sim_step}", True, [0, 200, 0]), (8, 30))
-        screen.blit(font.render(f"FPS: {int(clock.get_fps())}", True, [0, 200, 0]), (8, 60))
+        #colony.draw(screen)
         pg.display.update()
 
 

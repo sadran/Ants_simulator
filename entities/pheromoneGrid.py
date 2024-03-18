@@ -8,21 +8,19 @@ class PheromoneGrid:
     def __init__(self, screen_size):
         self.width = int(screen_size[0] / Config.PRATIO)
         self.height = int(screen_size[1] / Config.PRATIO)
-        self.intensity = np.zeros((self.width, self.height, 3))
-        self.T = np.zeros((self.width, self.height, 3))
+        self.intensity = np.zeros((self.width, self.height, 4))
 
         self.image = pg.Surface((self.width, self.height)).convert()
 
     def update(self, dt):
         self.intensity.clip(max=Config.MAX_PHEROMONE_INTENSITY)
-        non_zero_mask = self.intensity >= dt
-        zero_mask = self.intensity < dt
+        non_zero_mask = self.intensity >= (dt * Config.K)
+        zero_mask = self.intensity < (dt * Config.K)
 
-        self.intensity[non_zero_mask] -= dt
+        self.intensity[non_zero_mask] -= (dt * Config.K)
         self.intensity[zero_mask] = 0
 
-        #img_array = self.__calculate_image_array()
-        img_array = self.intensity * 255 / Config.MAX_PHEROMONE_INTENSITY
+        img_array = self.__calculate_image_array()
         pg.surfarray.blit_array(self.image, img_array)
         return self.image
 
@@ -30,18 +28,21 @@ class PheromoneGrid:
         home_pheromone_color = np.full((self.width, self.height, 3), Config.HOME_PHEROMONE_COLOR)
         food_pheromone_color = np.full((self.width, self.height, 3), Config.FOOD_PHEROMONE_COLOR)
         mis_pheromone_color = np.full((self.width, self.height, 3), Config.MIS_PHEROMONE_COLOR)
+        cout_pheromone_color = np.full((self.width, self.height, 3), Config.COUT_PHEROMONE_COLOR)
         pheromone_grid = np.zeros((self.width, self.height, 3))
 
-        pheromone_grid[:, :, 0] += self.intensity[:, :, 0] * home_pheromone_color[:, :, 0]
-        pheromone_grid[:, :, 1] += self.intensity[:, :, 0] * home_pheromone_color[:, :, 1]
-        pheromone_grid[:, :, 2] += self.intensity[:, :, 0] * home_pheromone_color[:, :, 2]
+        if Config.POLICY == "attacking":
+            pheromone_grid += home_pheromone_color[:, :, :] * np.broadcast_to(self.intensity[:, :, 0, np.newaxis], (
+                self.width, self.height, 3)) / Config.MAX_PHEROMONE_INTENSITY
 
-        pheromone_grid[:, :, 0] += self.intensity[:, :, 1] * food_pheromone_color[:, :, 0]
-        pheromone_grid[:, :, 1] += self.intensity[:, :, 1] * food_pheromone_color[:, :, 1]
-        pheromone_grid[:, :, 2] += self.intensity[:, :, 1] * food_pheromone_color[:, :, 2]
+        pheromone_grid += food_pheromone_color[:, :, :] * np.broadcast_to(self.intensity[:, :, 1, np.newaxis], (
+            self.width, self.height, 3)) / Config.MAX_PHEROMONE_INTENSITY
 
-        pheromone_grid[:, :, 0] += self.intensity[:, :, 2] * mis_pheromone_color[:, :, 0]
-        pheromone_grid[:, :, 1] += self.intensity[:, :, 2] * mis_pheromone_color[:, :, 1]
-        pheromone_grid[:, :, 2] += self.intensity[:, :, 2] * mis_pheromone_color[:, :, 2]
-        img_array = (pheromone_grid / Config.MAX_PHEROMONE_INTENSITY) * 255
-        return img_array
+        pheromone_grid += mis_pheromone_color[:, :, :] * np.broadcast_to(self.intensity[:, :, 2, np.newaxis], (
+            self.width, self.height, 3)) / Config.MAX_PHEROMONE_INTENSITY
+
+        if Config.POLICY == "defending":
+            pheromone_grid += cout_pheromone_color[:, :, :] * np.broadcast_to(self.intensity[:, :, 3, np.newaxis], (
+                self.width, self.height, 3)) / Config.MAX_PHEROMONE_INTENSITY
+
+        return pheromone_grid
