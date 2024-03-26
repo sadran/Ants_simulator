@@ -83,7 +83,7 @@ def simulator(config, result_directory=None):
         delivered_food_list.append(delivered_food)
 
         if result_directory is not None:
-            if sim_step % 500 == 0 or sim_step == 0:
+            if sim_step % 2000 == 0:
                 pg.image.save(screen, str(image_directory) + f"\\{sim_step}.png")
 
         pg.display.update()
