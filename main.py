@@ -8,8 +8,8 @@ import matplotlib.patches as patches
 
 
 def main():
-    #do_experiments()
-    test()
+    do_experiments()
+    #test()
     #plot()
 
 
