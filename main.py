@@ -68,7 +68,7 @@ def experiment_1(result_root_directory: Path):
     config = Config()
     config.POLICY = 0
     config.ANTS = 1024
-    config.N = 3
+    config.N = 50000
     config.SHOW_HOME_PHERO = True
     config.SHOW_FOOD_PHERO = True
     config.SHOW_MIS_PHERO = True
@@ -104,7 +104,7 @@ def experiment_2(result_root_directory: Path):
     config = Config()
     config.POLICY = 1
     config.ANTS = 1024
-    config.N = 3
+    config.N = 50000
     config.SHOW_HOME_PHERO = False
     config.SHOW_FOOD_PHERO = True
     config.SHOW_MIS_PHERO = True
@@ -142,7 +142,7 @@ def experiment_3(result_root_directory: Path):
     config = Config()
     config.POLICY = 2
     config.ANTS = 1024
-    config.N = 3
+    config.N = 50000
     config.SHOW_HOME_PHERO = False
     config.SHOW_FOOD_PHERO = True
     config.SHOW_MIS_PHERO = True
