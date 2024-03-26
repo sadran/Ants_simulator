@@ -71,8 +71,8 @@ def simulator(config, result_directory=None):
             screen.blit(font.render(f"simulation step: {sim_step}", True, [0, 200, 0]), (8, 8))
             screen.blit(font.render(f"total collected foods:{collected_food}", True, [0, 200, 0]), (8, 30))
             screen.blit(font.render(f"total delivered foods:{delivered_food}", True, [0, 200, 0]), (8, 60))
-            screen.blit(font.render(f"ants ever collected ratio:{ants_collected_ever:.2f}", True, [0, 200, 0]), (8, 90))
-            screen.blit(font.render(f"ants ever delivered ratio:{ants_delivered_ever:.2f}", True, [0, 200, 0]), (8, 120))
+            screen.blit(font.render(f"ants ever collected:{ants_collected_ever}", True, [0, 200, 0]), (8, 90))
+            screen.blit(font.render(f"ants ever delivered:{ants_delivered_ever}", True, [0, 200, 0]), (8, 120))
 
         if config.SHOW_COLONY:
             colony.draw(screen)

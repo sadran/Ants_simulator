@@ -8,7 +8,8 @@ import matplotlib.patches as patches
 
 
 def main():
-    do_experiments()
+    #do_experiments()
+    test()
     #plot()
 
 
@@ -798,50 +799,49 @@ def load_results(experiment_root_dir: Path, ants_number):
 
 def test():
     config = Config()
-    config["FLLSCRN"] = True  # True for Full screen, or False for Window
-    config["ANTS"] = 1024  # Number of Ants in simulation
-    config["N"] = 50000  # number of simulation steps per experiment
-    config["WIDTH"] = 1920  # default 1200
-    config["HEIGHT"] = 1080  # default 800
-    config["PRATIO"] = 4  # Pixel Size for Pheromone grid
-    config["L_FOOD"] = (372, 36)  # food location
-    config["R_FOOD"] = 16  # food source radius
-    config["L_NEST"] = (960, 540)  # nest location
-    config["R_NEST"] = 20  # nest radius
+    config.FLLSCRN = True  # True for Full screen, or False for Window
+    config.ANTS = 256  # Number of Ants in simulation
+    config.N = 10000  # number of simulation steps per experiment
+    config.WIDTH = 1920  # default 1200
+    config.HEIGHT = 1080  # default 800
+    config.PRATIO = 4  # Pixel Size for Pheromone grid
+    config.L_FOOD = (372, 36)  # food location
+    config.R_FOOD = 16  # food source radius
+    config.L_NEST = (960, 540)  # nest location
+    config.R_NEST = 20  # nest radius
 
-    ###################### Hyper parameters
+    ##############yper parameters
 
-    config["MAX_SPEED"] = 50  # maximum ants speed
-    config["THETA_MAX"] = 0.8 * np.pi  # range of vector generation for direction selection
-    config["L_MAX"] = 40  # maximum magnitude of vector generation for direction selection
-    config["MU"] = 0.1 * np.pi  # coefficient for random noise
-    config["LAMBDA"] = 0.01  # coefficient for pheromone intensity
-    config["POLICY"] = 0
-    config["K"] = 1  # Evaporation rate
-    config["P_MAX"] = 1000  # Maximum patience
-    config["TP"] = 5
-    config["X"] = 32  # number of random vectors generated for direction selection
-    config["FPS"] = 60  # 48-90
-    config["MAL_ANT_FRC"] = .03
-    config["VSYNC"] = True  # limit frame rate to refresh rate
+    config.MAX_SPEED = 50  # maximum ants speed
+    config.THETA_MAX = 0.8 * np.pi  # range of vector generation for direction selection
+    config.L_MAX = 40  # maximum magnitude of vector generation for direction selection
+    config.MU = 0.1 * np.pi  # coefficient for random noise
+    config.LAMBDA = 0.01  # coefficient for pheromone intensity
+    config.POLICY = 0
+    config.K = 1  # Evaporation rate
+    config.P_MAX = 1000  # Maximum patience
+    config.TP = 5
+    config.X = 32  # number of random vectors generated for direction selection
+    config.FPS = 60  # 48-90
+    config.MAL_ANT_FRC = .03
+    config.VSYNC = True  # limit frame rate to refresh rate
 
-    ##################### Colors
+#############c olors
 
-    config["HOME_COLOR"] = (125, 0, 255)
-    config["FOOD_COLOR"] = [0, 255, 0]
-    config["HOME_PHEROMONE_COLOR"] = (0, 0, 255)
-    config["FOOD_PHEROMONE_COLOR"] = (0, 255, 0)
-    config["MIS_PHEROMONE_COLOR"] = (225, 0, 0)
-    config["CAUT_PHEROMONE_COLOR"] = (255, 0, 250)
-    config["MAX_PHEROMONE_INTENSITY"] = 1000
+    config.HOME_COLOR = (125, 0, 255)
+    config.FOOD_COLOR = [0, 255, 0]
+    config.HOME_PHEROMONE_COLOR = (0, 0, 255)
+    config.FOOD_PHEROMONE_COLOR = (0, 255, 0)
+    config.MIS_PHEROMONE_COLOR = (225, 0, 0)
+    config.CAUT_PHEROMONE_COLOR = (255, 0, 250)
+    config.MAX_PHEROMONE_INTENSITY = 1000
 
-    ######################### Visualization options
-
-    config["SHOW_HOME_PHERO"] = False
-    config["SHOW_FOOD_PHERO"] = True
-    config["SHOW_MIS_PHERO"] = True
-    config["SHOW_CAUT_PHERO"] = True
-    config["SHOW_COLONY"] = False  # if True, it visualizes the ants as well
+  #################isualization options
+    config.SHOW_HOME_PHERO = True
+    config.SHOW_FOOD_PHERO = True
+    config.SHOW_MIS_PHERO = True
+    config.SHOW_CAUT_PHERO = True
+    config.SHOW_COLONY = True  # if True, it visualizes the ants as well
 
     simulator(config)
 
